@@ -12,7 +12,7 @@ local Debris = game:GetService("Debris")
 local LocalPlayer = Players.LocalPlayer
 
 local function log(...) print("[IMPOSSIBLE REMASTERED]", ...) end
-local function warn(...) warn("[IMPOSSIBLE REMASTERED]]", ...) end
+local function warnLog(...) warn("[IMPOSSIBLE REMASTERED]", ...) end
 
 -- small helper waitFor
 local function waitFor(cond, timeout, step)
@@ -29,7 +29,6 @@ end
 -- ===== INTRO IMAGE (CENTERED) =====
 
 local TweenService = game:GetService("TweenService")
-local Players = game:GetService("Players")
 
 local player = Players.LocalPlayer
 
@@ -121,8 +120,15 @@ task.spawn(function()
 		if cr and cr:IsA("Folder") then
 			cr.ChildAdded:Connect(function(room)
 				local rn = tonumber(room.Name)
-				if rn == 1 then task.wait(0.12); pcall(function() MainGame.caption("good luck", true) end) end
-				if rn == 2 then task.wait(0.12); pcall(function() MainGame.caption("good luck"			end)
+				if rn == 1 then
+					task.wait(0.12)
+					pcall(function() MainGame.caption("good luck", true) end)
+				end
+				if rn == 2 then
+					task.wait(0.12)
+					pcall(function() MainGame.caption("good luck", true) end)
+				end
+			end)
 		else
 			-- fallback to LatestRoom
 			if RS and RS:FindFirstChild("GameData") and RS.GameData:FindFirstChild("LatestRoom") then
