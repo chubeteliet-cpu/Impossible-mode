@@ -1,0 +1,62 @@
+local damages = true
+local TweenService = game:GetService("TweenService")
+local player = game.Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+_G.baseval = 6
+
+local model = game:GetObjects("rbxassetid://111827810351864")[1]
+model.Parent = workspace
+
+local mainPart = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
+model.PrimaryPart = mainPart
+
+local rooms = workspace.CurrentRooms:GetChildren()
+local room = rooms[#rooms-1]
+
+model:SetPrimaryPartCFrame(room.Parts.Floor.CFrame + Vector3.new(0,6,0))
+
+local light = model:FindFirstChild("Light", true)
+if light then
+light.Range = 0
+local anim = TweenService:Create(light,TweenInfo.new(1),{Range = 21})
+anim:Play()
+end
+
+task.spawn(function()
+while damages do
+task.wait(0.15)
+
+local char = player.Character
+local hum = char and char:FindFirstChild("Humanoid")
+
+if hum and mainPart then
+local _, onscreen = camera:WorldToViewportPoint(mainPart.Position)
+
+if not onscreen and hum.Sit == false then
+hum:TakeDamage(hum.MaxHealth * 0.03)
+end
+
+if hum.Health <= 0 then
+firesignal(
+game.ReplicatedStorage.RemotesFolder.DeathHint.OnClientEvent,
+{
+"You died to Silence",
+"If you see him don't look away",
+"You should keep looking at him"
+},
+"Blue"
+)
+
+game.ReplicatedStorage.GameStats["Player_"..player.Name].Total.DeathCause.Value = "Silence"
+end
+end
+end
+end)
+
+workspace.CurrentRooms.ChildAdded:Wait()
+damages = false
+_G.baseval = -2
+
+task.wait(2)
+model:Destroy()
