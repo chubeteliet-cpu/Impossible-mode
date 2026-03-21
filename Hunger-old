@@ -1,0 +1,162 @@
+-- Local spawn script with GitHub sound + damages enabled
+local TweenService = game:GetService("TweenService")
+local player = game.Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+_G.baseval = 6
+local damages = true -- enable local damage
+
+-- ---------- helper: load sound from GitHub if the exploit API supports it ----------
+local function getGitSoundId(url, name)
+    local ok, res = pcall(function()
+        if type(isfile) == "function" and type(writefile) == "function" and type(getcustomasset) == "function" then
+            if not isfile(name .. ".mp3") then
+                writefile(name .. ".mp3", game:HttpGet(url))
+            end
+            return getcustomasset(name .. ".mp3")
+        end
+        return nil
+    end)
+    if ok and res then
+        return res
+    end
+    return nil
+end
+
+-- ---------- create model and place it ----------
+local model = game:GetObjects("rbxassetid://126362173602649")[1]
+if not model then return end
+model.Parent = workspace
+
+local mainPart = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
+model.PrimaryPart = mainPart
+
+-- make sure CurrentRooms exists
+local roomsFolder = workspace:FindFirstChild("CurrentRooms") or workspace:WaitForChild("CurrentRooms", 10)
+local rooms = {}
+if roomsFolder then
+    rooms = roomsFolder:GetChildren()
+end
+local room = rooms[#rooms - 1]
+
+if room and mainPart then
+    model:SetPrimaryPartCFrame(room.Parts.Floor.CFrame + Vector3.new(0, 6, 0))
+else
+    -- fallback: place it in a safe position if no room is found
+    if mainPart then
+        model:SetPrimaryPartCFrame(CFrame.new(0, 5, 0))
+    end
+end
+
+-- ---------- light tween ----------
+local light = model:FindFirstChild("Light", true)
+if light then
+    light.Range = 0
+    local anim = TweenService:Create(light, TweenInfo.new(1), { Range = 21 })
+    anim:Play()
+end
+
+-- ---------- sound on spawn (using GitHub raw mp3) ----------
+-- Replace the URL below if you want a different track
+local SOUND_URL = "https://raw.githubusercontent.com/chubeteliet-cpu/Mode-music/main/Hunger.mp3"
+local spawnSound = Instance.new("Sound")
+spawnSound.Name = "SpawnSound"
+spawnSound.Volume = 2
+spawnSound.Looped = false
+
+-- try to load with getcustomasset (if supported), otherwise leave SoundId unset
+local loadedId = getGitSoundId(SOUND_URL, "hunger_spawn_sound")
+if loadedId then
+    spawnSound.SoundId = loadedId
+else
+    -- if loading fails, you can set SoundId to a known rbxassetid if available
+    -- spawnSound.SoundId = "rbxassetid://16913826129"
+end
+
+-- parent the sound to mainPart if available, otherwise workspace
+if mainPart then
+    spawnSound.Parent = mainPart
+else
+    spawnSound.Parent = workspace
+end
+
+pcall(function()
+    if spawnSound.SoundId and spawnSound.SoundId ~= "" then
+        spawnSound:Play()
+    end
+end)
+
+spawnSound.Ended:Connect(function()
+    if spawnSound and spawnSound.Parent then
+        spawnSound:Destroy()
+    end
+end)
+
+-- ---------- damage loop (only when damages == true) ----------
+task.spawn(function()
+    while damages do
+        task.wait(0.15)
+
+        local char = player.Character
+        local hum = char and char:FindFirstChild("Humanoid")
+
+        if hum and mainPart then
+            local _, onscreen = camera:WorldToViewportPoint(mainPart.Position)
+
+            -- If the entity is not on-screen and the player is not sitting, deal damage
+            if not onscreen and hum.Sit == false then
+                pcall(function()
+                    if typeof(hum.TakeDamage) == "function" then
+                        hum:TakeDamage(hum.MaxHealth * 0.03)
+                    else
+                        hum.Health = math.max(0, hum.Health - (hum.MaxHealth * 0.03))
+                    end
+                end)
+            end
+
+            if hum.Health <= 0 then
+                pcall(function()
+                    firesignal(
+                        game.ReplicatedStorage.RemotesFolder.DeathHint.OnClientEvent,
+                        {
+                            "You died of hunger",
+                            "If you see him, don't look away",
+                            "You should keep looking at him"
+                        },
+                        "Blue"
+                    )
+                end)
+
+                pcall(function()
+                    local gs = game.ReplicatedStorage:FindFirstChild("GameStats")
+                    if gs and gs:FindFirstChild("Player_" .. player.Name) and gs["Player_" .. player.Name].Total and gs["Player_" .. player.Name].Total:FindFirstChild("DeathCause") then
+                        gs["Player_" .. player.Name].Total.DeathCause.Value = "hunger"
+                    end
+                end)
+            end
+        end
+    end
+end)
+
+-- When a new room is added -> disable damage and clean up the model
+local currentRooms = workspace:FindFirstChild("CurrentRooms") or workspace:WaitForChild("CurrentRooms", 10)
+if currentRooms then
+    currentRooms.ChildAdded:Connect(function()
+        damages = false
+        _G.baseval = -2
+
+        task.wait(2)
+        if model and model.Parent then
+            model:Destroy()
+        end
+    end)
+else
+    -- if CurrentRooms does not exist, still clean up after 20 seconds
+    task.delay(20, function()
+        damages = false
+        _G.baseval = -2
+        if model and model.Parent then
+            model:Destroy()
+        end
+    end)
+end
