@@ -24,7 +24,7 @@ local function getGitSoundId(url, name)
 end
 
 -- ---------- create model and place it ----------
-local model = game:GetObjects("rbxassetid://126362173602649")[1]
+local model = game:GetObjects("rbxassetid://16913826129")[1]
 if not model then return end
 model.Parent = workspace
 
