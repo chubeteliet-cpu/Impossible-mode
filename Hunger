@@ -1,12 +1,10 @@
--- Local spawn script with GitHub sound + damages enabled
-local TweenService = game:GetService("TweenService")
+e-- local TweenService = game:GetService("TweenService")
 local player = game.Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
 _G.baseval = 6
-local damages = true -- <-- bật gây sát thương cục bộ
+local damages = true
 
--- ---------- helper: tải sound từ GitHub nếu môi trường hỗ trợ exploit api ----------
 local function getGitSoundId(url, name)
     local ok, res = pcall(function()
         if type(isfile) == "function" and type(writefile) == "function" and type(getcustomasset) == "function" then
@@ -17,14 +15,16 @@ local function getGitSoundId(url, name)
         end
         return nil
     end)
+
     if ok and res then
         return res
     end
+
     return nil
 end
 
 -- ---------- tạo model và đặt vị trí ----------
-local model = game:GetObjects("rbxassetid://126362173602649")[1]
+local model = game:GetObjects("rbxassetid://13581913410")[1]
 if not model then return end
 model.Parent = workspace
 
@@ -34,44 +34,50 @@ model.PrimaryPart = mainPart
 -- đảm bảo CurrentRooms tồn tại
 local roomsFolder = workspace:FindFirstChild("CurrentRooms") or workspace:WaitForChild("CurrentRooms", 10)
 local rooms = {}
+
 if roomsFolder then
     rooms = roomsFolder:GetChildren()
 end
-local room = rooms[#rooms-1]
+
+local room = rooms[#rooms - 1]
 
 if room and mainPart then
-    model:SetPrimaryPartCFrame(room.Parts.Floor.CFrame + Vector3.new(0,6,0))
+    model:SetPrimaryPartCFrame(room.Parts.Floor.CFrame + Vector3.new(0, 6, 0))
 else
-    -- fallback: đặt ở vị trí an toàn nếu không tìm được room
     if mainPart then
-        model:SetPrimaryPartCFrame(CFrame.new(0,5,0))
+        model:SetPrimaryPartCFrame(CFrame.new(0, 5, 0))
     end
 end
 
 -- ---------- light tween ----------
 local light = model:FindFirstChild("Light", true)
+
 if light then
     light.Range = 0
-    local anim = TweenService:Create(light, TweenInfo.new(1), {Range = 21})
+
+    local anim = TweenService:Create(
+        light,
+        TweenInfo.new(1),
+        {Range = 21}
+    )
+
     anim:Play()
 end
 
--- ---------- sound khi xuất hiện (dùng GitHub raw mp3) ----------
--- Thay URL bên dưới nếu bạn muốn track khác
+-- ---------- sound khi xuất hiện ----------
 local SOUND_URL = "https://raw.githubusercontent.com/chubeteliet-cpu/Mode-music/main/Hunger.mp3"
+
 local spawnSound = Instance.new("Sound")
 spawnSound.Name = "SpawnSound"
 spawnSound.Volume = 2
 spawnSound.Looped = false
--- cố gắng load bằng getcustomasset (nếu executor hỗ trợ), fallback: không thiết lập SoundId
+
 local loadedId = getGitSoundId(SOUND_URL, "hunger_spawn_sound")
+
 if loadedId then
     spawnSound.SoundId = loadedId
-else
-    -- nếu không tải được, bạn có thể đặt SoundId thành 1 rbxassetid nếu có sẵn
-    -- spawnSound.SoundId = "rbxassetid://1234567890"
 end
--- parent sound vào mainPart nếu có, else workspace
+
 if mainPart then
     spawnSound.Parent = mainPart
 else
@@ -85,10 +91,12 @@ pcall(function()
 end)
 
 spawnSound.Ended:Connect(function()
-    if spawnSound and spawnSound.Parent then spawnSound:Destroy() end
+    if spawnSound and spawnSound.Parent then
+        spawnSound:Destroy()
+    end
 end)
 
--- ---------- damage loop (chỉ khi damages == true) ----------
+-- ---------- damage loop ----------
 task.spawn(function()
     while damages do
         task.wait(0.15)
@@ -99,14 +107,15 @@ task.spawn(function()
         if hum and mainPart then
             local _, onscreen = camera:WorldToViewportPoint(mainPart.Position)
 
-            -- Nếu *không* on-screen và người chơi không ngồi, gây sát thương
             if not onscreen and hum.Sit == false then
-                -- bảo đảm TakeDamage tồn tại, fallback chỉnh Health
                 pcall(function()
                     if typeof(hum.TakeDamage) == "function" then
                         hum:TakeDamage(hum.MaxHealth * 0.03)
                     else
-                        hum.Health = math.max(0, hum.Health - (hum.MaxHealth * 0.03))
+                        hum.Health = math.max(
+                            0,
+                            hum.Health - (hum.MaxHealth * 0.03)
+                        )
                     end
                 end)
             end
@@ -126,8 +135,14 @@ task.spawn(function()
 
                 pcall(function()
                     local gs = game.ReplicatedStorage:FindFirstChild("GameStats")
-                    if gs and gs:FindFirstChild("Player_"..player.Name) and gs["Player_"..player.Name].Total and gs["Player_"..player.Name].Total:FindFirstChild("DeathCause") then
-                        gs["Player_"..player.Name].Total.DeathCause.Value = "hunger"
+
+                    if gs
+                    and gs:FindFirstChild("Player_" .. player.Name)
+                    and gs["Player_" .. player.Name].Total
+                    and gs["Player_" .. player.Name].Total:FindFirstChild("DeathCause") then
+
+                        gs["Player_" .. player.Name]
+                            .Total.DeathCause.Value = "hunger"
                     end
                 end)
             end
@@ -135,21 +150,29 @@ task.spawn(function()
     end
 end)
 
--- Khi 1 room mới được thêm -> tắt gây sát thương và dọn model
-local currentRooms = workspace:FindFirstChild("CurrentRooms") or workspace:WaitForChild("CurrentRooms", 10)
+-- ---------- cleanup khi sang room mới ----------
+local currentRooms =
+    workspace:FindFirstChild("CurrentRooms")
+    or workspace:WaitForChild("CurrentRooms", 10)
+
 if currentRooms then
     currentRooms.ChildAdded:Connect(function()
         damages = false
         _G.baseval = -2
 
         task.wait(2)
-        if model and model.Parent then model:Destroy() end
+
+        if model and model.Parent then
+            model:Destroy()
+        end
     end)
 else
-    -- nếu không có CurrentRooms, vẫn đảm bảo cleanup sau 20s
     task.delay(20, function()
         damages = false
         _G.baseval = -2
-        if model and model.Parent then model:Destroy() end
+
+        if model and model.Parent then
+            model:Destroy()
+        end
     end)
 end
